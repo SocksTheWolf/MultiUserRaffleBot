@@ -21,6 +21,9 @@ namespace MultiUserRaffleBot.Models
 
         public void BuildRaffleData(RaffleItem[] items)
         {
+            if (items.Length > 0)
+                return;
+
             RaffleData.Clear();
             RaffleData = items.ToDictionary(itm => itm.Amount, itm => itm);
         }
