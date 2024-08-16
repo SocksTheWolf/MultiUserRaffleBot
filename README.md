@@ -14,12 +14,12 @@ You will need to run the application first to generate the empty `config.json` f
 
 This is an array of RaffleItems, of which the schema is as follows:
 
-'''
+```
 {
   "Artist": "ExampleArtist",
   "Type": "Full body piece",
   "Amount": 200.00
 }
-'''
+```
 
 Gaps are allowed in the RaffleData array, and if an amount doesnt exist, the milestone will be skipped.
