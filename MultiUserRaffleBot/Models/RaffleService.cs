@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using MultiUserRaffleBot.Types;
 
@@ -10,9 +11,19 @@ namespace MultiUserRaffleBot.Models
     {
         private ConcurrentQueue<RaffleItem> RaffleQueue = new();
         private Dictionary<double, RaffleItem> RaffleData = new Dictionary<double, RaffleItem>();
+        private CancellationTokenSource cancelToken = new();
         private int RaffleLength = 0;
 
         public override ConsoleSources GetSource() => ConsoleSources.Raffle;
+
+        public void DrawRaffleNow()
+        {
+            PrintMessage("Force drawing raffle now...");
+            // Cancel any task delay waits
+            cancelToken.Cancel();
+            cancelToken.Dispose();
+            cancelToken = new();
+        }
 
         public void SetRaffleTime(int seconds)
         {
@@ -59,10 +70,8 @@ namespace MultiUserRaffleBot.Models
                             Message = currentItem.Type
                         });
 
-                        // TODO: CONSIDER WARNING MESSAGES???????
-
                         // Wait however long the raffle is supposed to go
-                        await Task.Delay(RaffleLength);
+                        await Task.Delay(RaffleLength, cancelToken.Token);
 
                         PrintMessage($"Ending raffle for {currentItem.Type} from {currentItem.Artist}");
                         // End the raffle

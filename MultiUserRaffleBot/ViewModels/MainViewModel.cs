@@ -11,8 +11,8 @@ public partial class MainViewModel : ViewModelBase
     private RaffleService Raffle { get; set; } = new RaffleService();
 
     // Services
-    private TiltifyService? CharityTracker { get; set; }
-    private TwitchService? Twitch { get; set; }
+    private TiltifyService CharityTracker { get; set; }
+    private TwitchService Twitch { get; set; }
 
     public MainViewModel()
     {
@@ -32,14 +32,6 @@ public partial class MainViewModel : ViewModelBase
             Console.AddMessage($"Hit Milestone! Raised over {data.Amount}{data.Currency}", CharityTracker);
             Raffle.ReachMilestone(data.Amount);
         };
-        CharityTracker.OnAuthUpdate = (data) =>
-        {
-            Config.TiltifySettings.OAuthToken = data.OAuthToken;
-            if (!string.IsNullOrWhiteSpace(data.RefreshToken))
-                Config.TiltifySettings.RefreshToken = data.RefreshToken;
-            Config.SaveConfigData();
-            Console.AddMessage("OAuth Data Updated!", CharityTracker);
-        };
 
         /* Twitch */
         Twitch = new TwitchService(Config.TwitchSettings);
@@ -50,9 +42,9 @@ public partial class MainViewModel : ViewModelBase
         Raffle.OnConsolePrint = (msg) => Console.AddMessage(msg, Raffle);
         Raffle.OnSourceEvent += (data) => {
             if (data.Type == SourceEventType.StartRaffle)
-                Twitch?.StartRaffle($"{data.Message} from {data.Name}");
+                Twitch.StartRaffle($"{data.Message} from {data.Name}");
             else
-                Twitch?.PickRaffle();
+                Twitch.PickRaffle();
         };
 
         Config.SaveConfigData();
@@ -63,7 +55,9 @@ public partial class MainViewModel : ViewModelBase
             Console.AddMessage("Operations Running!", ConsoleSources.Main);
 
         CharityTracker.Start();
-        Raffle.Start();
+
+        if (CharityTracker.HasStarted && Twitch.HasStarted)
+            Raffle.Start();
     }
 
     // Separated into a different function to allow for reloading of data
@@ -104,16 +98,27 @@ public partial class MainViewModel : ViewModelBase
         // Load up our configs again
         LoadConfigs();
         // Join any channels we haven't before
-        Twitch?.JoinChannels(Config.TwitchSettings);
+        Twitch.JoinChannels(Config.TwitchSettings);
     }
 
     public void OnReloadButton(object msg)
     {
+        if (!Twitch.HasStarted || !CharityTracker.HasStarted)
+        {
+            Console.AddMessage("Configuration cannot be reloaded, requires restart!", ConsoleSources.Main);
+            return;
+        }
+
         ReloadConfig();
     }
 
     public void OnPickWinner(object msg)
     {
-        Twitch?.PickRaffle();
+        if (!Raffle.HasStarted)
+        {
+            Console.AddMessage("Raffle service cannot force pick winner as configs are invalid!", ConsoleSources.Main);
+            return;
+        }
+        Raffle.DrawRaffleNow();
     }
 }
