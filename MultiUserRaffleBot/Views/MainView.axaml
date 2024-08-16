@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MultiUserRaffleBot.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="MultiUserRaffleBot.Views.MainView"
+             x:DataType="vm:MainViewModel">
+  <Design.DataContext>
+    <!-- This only sets the DataContext for the previewer in an IDE,
+         to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+    <vm:MainViewModel />
+  </Design.DataContext>
+
+  <StackPanel>
+    <!-- Console Log -->
+    <DataGrid x:Name="ConsoleLog" Margin="5" Height="380" ItemsSource="{Binding Console.ConsoleMessages, Mode=OneWay}"
+      IsReadOnly="True" GridLinesVisibility="Horizontal" BorderThickness="1" CanUserSortColumns="False" AutoGenerateColumns="True" VerticalScrollBarVisibility="Auto" 
+              HorizontalScrollBarVisibility="Hidden" MaxColumnWidth="650">
+        <DataGrid.Styles>
+          <Style Selector="TextBlock">
+            <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+          </Style>
+        </DataGrid.Styles>
+      </DataGrid>
+
+    <!-- Control Panel -->
+    <DockPanel>
+      <Button Content="Reload Config" Command="{Binding OnReloadButton}" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Margin="100 0" Width="180" />
+      <Button Content="Pick Winner" Command="{Binding OnPickWinner}" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Width="180" />
+    </DockPanel>
+  </StackPanel>
+</UserControl>

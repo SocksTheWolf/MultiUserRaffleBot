@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <Authors>SocksTheWolf</Authors>
+    <PackageProjectUrl>https://github.com/SocksTheWolf/MultiUserRaffleBot</PackageProjectUrl>
+    <Copyright>Licensed under the MIT License</Copyright>
+  </PropertyGroup>
+</Project>
