@@ -42,10 +42,6 @@ namespace MultiUserRaffleBot.Models
                 PrintMessage($"Enqueued a raffle for milestone {milestone}");
                 RaffleQueue.Enqueue(RaffleData[milestone]);
             }
-            else
-            {
-                PrintMessage($"Unable to enqueue a raffle for milestone {milestone}");
-            }
         }
 
         protected override async Task Tick()
