@@ -229,7 +229,7 @@ namespace MultiUserRaffleBot.Models
                         SendMessageToChannel(args.Command.ChatMessage.Channel, $"@{user} you have entered!");
                 }
             }
-            else if (loweredCommand == "confirm" && !string.IsNullOrEmpty(CurrentWinnerName))
+            else if ((loweredCommand == "confirm" || loweredCommand == "claim") && !string.IsNullOrEmpty(CurrentWinnerName))
             {
                 if (user == CurrentWinnerName)
                 {
