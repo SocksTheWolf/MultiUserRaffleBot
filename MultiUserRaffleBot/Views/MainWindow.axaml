@@ -9,8 +9,6 @@
         MinWidth="790" MinHeight="460"
         x:Class="MultiUserRaffleBot.Views.MainWindow"
         Title="MultiUser Raffle Bot"
-        TransparencyLevelHint="AcrylicBlur"
-        CanResize="False"
-        Background="Transparent">
+        CanResize="False">
         <views:MainView />
 </Window>
