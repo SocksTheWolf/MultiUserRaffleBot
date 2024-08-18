@@ -81,7 +81,7 @@ namespace MultiUserRaffleBot.Models
 
         /*** Raffle Settings ***/
         [JsonProperty(Required = Required.Always)]
-        public RaffleItem[] RaffleData = [];
+        public List<RaffleItem> RaffleData = new();
 
         /*** UI Settings ***/
         [JsonProperty]
@@ -138,6 +138,13 @@ namespace MultiUserRaffleBot.Models
             }
             
             return null;
+        }
+
+        public void MarkRaffleComplete(RaffleItem item)
+        {
+            RaffleItem? foundItem = RaffleData.FirstOrDefault(it => it.Amount == item.Amount);
+            if (foundItem != null)
+                foundItem.Enabled = false;
         }
 
         public void SaveConfigData(bool OverrideInvalid = false)

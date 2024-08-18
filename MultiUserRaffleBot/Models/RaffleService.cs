@@ -13,34 +13,49 @@ namespace MultiUserRaffleBot.Models
         private ConcurrentQueue<RaffleItem> RaffleQueue = new();
         private Dictionary<double, RaffleItem> RaffleData = new Dictionary<double, RaffleItem>();
         private CancellationTokenSource cancelToken = new();
-        private bool CanRaffle = true;
+        private RaffleItem? currentRaffleItem = null;
+        private bool canRaffle = true;
+
+
+        public void BuildRaffleData(List<RaffleItem> items)
+        {
+            if (items.Count < 0)
+                return;
+
+            RaffleData.Clear();
+            RaffleData = items.Where(itm => itm.Enabled).ToDictionary(itm => itm.Amount, itm => itm);
+            PrintMessage($"{RaffleData.Count} items have been added to raffle item dictionary");
+        }
 
         public override ConsoleSources GetSource() => ConsoleSources.Raffle;
+        public RaffleItem? GetRaffleItem() => currentRaffleItem;
+
+        public void SetCanRaffle(bool state)
+        {
+            // Clear out the current raffle item
+            if (state == true)
+                currentRaffleItem = null;
+
+            canRaffle = state;
+        }
 
         public void DrawRaffleNow()
         {
             PrintMessage("Force drawing raffle now...");
             // Cancel any task delay waits
             cancelToken.Cancel();
-        }
-
-        public void SetCanRaffle(bool state) => CanRaffle = state;
-
-        public void BuildRaffleData(RaffleItem[] items)
-        {
-            if (items.Length < 0)
-                return;
-
-            RaffleData.Clear();
-            RaffleData = items.ToDictionary(itm => itm.Amount, itm => itm);
-        }
+        }        
 
         public void ReachMilestone(double milestone)
         {
             if (RaffleData.ContainsKey(milestone))
             {
-                PrintMessage($"Enqueued a raffle for milestone {milestone}");
-                RaffleQueue.Enqueue(RaffleData[milestone]);
+                RaffleItem currentItem = RaffleData[milestone];
+                if (currentItem.Enabled)
+                {
+                    PrintMessage($"Enqueued a raffle for milestone {milestone}");
+                    RaffleQueue.Enqueue(currentItem);
+                }
             }
         }
 
@@ -50,7 +65,7 @@ namespace MultiUserRaffleBot.Models
             while (ShouldRun)
             {
                 // Check to see if we have any commands in the queue to run
-                if (!RaffleQueue.IsEmpty && CanRaffle)
+                if (!RaffleQueue.IsEmpty && canRaffle)
                 {
                     if (RaffleQueue.TryDequeue(out RaffleItem? currentItem))
                     {
@@ -62,6 +77,8 @@ namespace MultiUserRaffleBot.Models
                             RaffleLength = currentItem.RaffleTime,
                             Message = currentItem.Type
                         });
+
+                        currentRaffleItem = currentItem;
 
                         // Wait however long the raffle is supposed to go
                         try

@@ -16,11 +16,14 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        // Load all configuration data
-        LoadConfigs();
-
         // Start the console service
         Console.Start();
+
+        // Push the raffle handling immediately
+        Raffle.OnConsolePrint = (msg) => Console.AddMessage(msg, Raffle);
+
+        // Load all configuration data
+        LoadConfigs();
 
         /* Tiltify */
 #pragma warning disable CS8602 // Possible null reference argument.
@@ -39,12 +42,19 @@ public partial class MainViewModel : ViewModelBase
         Twitch.OnSourceEvent += (data) => {
             // When Twitch is done running said raffle (meaning something claimed or we ran out of entries)
             // then allow the raffle system to present another raffle entry
+            RaffleItem? lastRaffle = Raffle.GetRaffleItem();
+            if (lastRaffle != null)
+            {
+                // Mark this raffle item as complete so we don't end up running it again upon next startup.
+                Config.MarkRaffleComplete(lastRaffle);
+                Config.SaveConfigData();
+            }
+
             Raffle.SetCanRaffle(true);
         };
         Twitch.Start();
 
         /* Raffle */
-        Raffle.OnConsolePrint = (msg) => Console.AddMessage(msg, Raffle);
         Raffle.OnSourceEvent += (data) => {
             if (data.Type == SourceEventType.StartRaffle)
                 Twitch.StartRaffle($"{data.Message} from {data.Name}", data.RaffleLength);
@@ -57,7 +67,7 @@ public partial class MainViewModel : ViewModelBase
         if (!Config.IsValid)
             Console.AddMessage("Invalid configuration, please check configs and restart", ConsoleSources.Main);
         else
-            Console.AddMessage("Operations Running!", ConsoleSources.Main);
+            Console.AddMessage("Initalization Complete!", ConsoleSources.Main);
 
         CharityTracker.Start();
 

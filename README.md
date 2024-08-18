@@ -9,9 +9,8 @@ Once set, restart the application and keep it running for however long your even
 ## Notes
 
 * All raffle winners will contain the Twitch whisperable username of the winner in a generated `raffles.txt` file.
-* There is no support for "restoring progress" from closing the app and opening it again. If you need to close the app, it's recommended that you remove all the completed raffles from your config file. Otherwise those previous raffles will run again.
 * This connects to all of the Twitch accounts in the channels list
-* If no raffle entries are made, the raffle will be closed with no winner and still documented in the output raffles.txt file.
+* If no raffle entries are made, the raffle will be closed with no winner and still documented in the output `raffles.txt` file.
 * This only works for Tiltify team campaigns! Use your Tiltify team campaign id. The app will watch the total amount your team has raised for the campaign. 
 
 ## RaffleData Setup
@@ -27,4 +26,5 @@ This is an array of RaffleItems, of which the schema is as follows:
 }
 ```
 
-Gaps are allowed in the RaffleData array, and if an amount doesnt exist, the milestone will be skipped.
+Gaps are allowed in the RaffleData array, and if an amount doesnt exist, the milestone will be skipped. 
+You can also manually turn off a milestone by putting the flag `Enabled: false` into the json above for an item.
