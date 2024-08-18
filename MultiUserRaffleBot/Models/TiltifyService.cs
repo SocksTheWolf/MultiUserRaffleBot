@@ -99,6 +99,9 @@ namespace MultiUserRaffleBot.Models
                     GetTeamCampaignResponse resp = await Campaign.TeamCampaigns.GetCampaign(settings.CampaignID);
                     if (double.TryParse(resp.Data.TotalAmountRaised?.Value, out CurrentAmountRaised))
                     {
+                        if (settings.Debug)
+                            CurrentAmountRaised += 200.0;
+
                         int factorValue = (int)(double.Floor(CurrentAmountRaised / 100.0));
                         if (CurrentFactorAmount < factorValue)
                         {

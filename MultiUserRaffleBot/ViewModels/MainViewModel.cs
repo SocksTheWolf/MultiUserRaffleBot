@@ -36,13 +36,18 @@ public partial class MainViewModel : ViewModelBase
         /* Twitch */
         Twitch = new TwitchService(Config.TwitchSettings);
         Twitch.OnConsolePrint = (msg) => Console.AddMessage(msg, Twitch);
+        Twitch.OnSourceEvent += (data) => {
+            // When Twitch is done running said raffle (meaning something claimed or we ran out of entries)
+            // then allow the raffle system to present another raffle entry
+            Raffle.SetCanRaffle(true);
+        };
         Twitch.Start();
 
         /* Raffle */
         Raffle.OnConsolePrint = (msg) => Console.AddMessage(msg, Raffle);
         Raffle.OnSourceEvent += (data) => {
             if (data.Type == SourceEventType.StartRaffle)
-                Twitch.StartRaffle($"{data.Message} from {data.Name}");
+                Twitch.StartRaffle($"{data.Message} from {data.Name}", data.RaffleLength);
             else
                 Twitch.PickRaffle();
         };
@@ -88,7 +93,6 @@ public partial class MainViewModel : ViewModelBase
 
         // Set the max message lifetime
         Console.SetMaxMessageLifetime(Config.MaxMessageLifetime);
-        Raffle.SetRaffleTime(Config.RaffleLengthInSec);
         Raffle.BuildRaffleData(Config.RaffleData);
     }
 

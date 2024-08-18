@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -17,11 +19,13 @@ namespace MultiUserRaffleBot.Models
         private readonly TwitchClient client;
         private readonly TwitchSettings settings;
         private Random rng = new();
+        private CancellationTokenSource cancelToken = new();
 
         // Raffle Data
         private const string WinnerLogFile = "raffle.txt";
         private bool RaffleOpen = false;
         private string CurrentRafflePrize = string.Empty;
+        private string CurrentWinnerName = string.Empty;
         private Collection<string> Entries = new();
 
         public override ConsoleSources GetSource() => ConsoleSources.Twitch;
@@ -122,7 +126,7 @@ namespace MultiUserRaffleBot.Models
         }
 
         /*** Raffle Support ***/
-        public void StartRaffle(string rafflePrize)
+        public void StartRaffle(string rafflePrize, int raffleLength)
         {
             // If the raffle prize string is just empty, skip the command
             if (string.IsNullOrWhiteSpace(rafflePrize))
@@ -131,7 +135,7 @@ namespace MultiUserRaffleBot.Models
             RaffleOpen = true;
             Entries.Clear();
             CurrentRafflePrize = rafflePrize;
-            SendMessageToAllChannels($"Raffle is now open for {CurrentRafflePrize}! Type !enter to enter.");
+            SendMessageToAllChannels($"Raffle is now open for {CurrentRafflePrize} for {raffleLength/60} minutes! Type !enter to enter.");
             PrintMessage($"Raffle has now opened for {CurrentRafflePrize}!");
         }
 
@@ -143,7 +147,8 @@ namespace MultiUserRaffleBot.Models
                 return;
             }
 
-            if (!RaffleOpen)
+            // Check to see if a raffle is actually running.
+            if (string.IsNullOrEmpty(CurrentRafflePrize))
             {
                 PrintMessage("No raffle is currently open!");
                 return;
@@ -153,31 +158,47 @@ namespace MultiUserRaffleBot.Models
             if (Entries.Count <= 0)
             {
                 PrintMessage($"There are no entries for the prize {CurrentRafflePrize} moving forward...");
-                WriteRaffleResult(CurrentRafflePrize, "NO_ENTRIES!");
-                
+                WriteRaffleResult("NO_ENTRIES!");
+                Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
                 return;
             }
 
             // Choose a winner
             int ChooseIndex = rng.Next(Entries.Count);
-            string WinnerName = Entries[ChooseIndex];
+            CurrentWinnerName = Entries[ChooseIndex].ToLower();
+
+            // Print a message
+            PrintMessage($"Winner picked {CurrentWinnerName} at index {ChooseIndex} from {Entries.Count} entries");
+
             // Remove this selected winner, because if we have to reroll, then this person won't be a potential choice.
             Entries.RemoveAt(ChooseIndex);
 
-            // Print a message and send it to everyone.
-            PrintMessage($"Winner picked {WinnerName} at index {ChooseIndex}");
-            SendMessageToAllChannels($"Raffle winner of {CurrentRafflePrize} is @{WinnerName}! Check your Twitch Whispers for info!");
-
-            WriteRaffleResult(CurrentRafflePrize, WinnerName);
+            // Open the confirm window for 5 minutes
+            SendMessageToAllChannels($"Raffle winner of {CurrentRafflePrize} is @{CurrentWinnerName}! Type !confirm within 5 minutes to confirm!");
+            Task.Run(async () =>
+            {
+                // 300000 is 5 minutes in ms
+                await Task.Delay(300000, cancelToken.Token);
+                PrintMessage($"Raffle prize for {CurrentRafflePrize} was not claimed, redrawing...");
+                PickRaffle();
+            }, cancelToken.Token);
         }
 
-        private void WriteRaffleResult(string prize, string winner)
+        private void WriteRaffleResult(string winner)
         {
             // Print out the winner to a log file.
             using (StreamWriter FileWriter = File.AppendText(WinnerLogFile))
             {
-                FileWriter.WriteLine($"{prize} winner is {winner}");
+                FileWriter.WriteLine($"{CurrentRafflePrize} winner is {winner}");
             }
+            CurrentRafflePrize = string.Empty;
+        }
+
+        private void CancelWait()
+        {
+            cancelToken.Cancel();
+            cancelToken.Dispose();
+            cancelToken = new();
         }
 
         /*** Handle Twitch Events ***/
@@ -205,6 +226,20 @@ namespace MultiUserRaffleBot.Models
                     Entries.Add(user);
                     if (settings.RespondToRaffleEntry)
                         SendMessageToChannel(args.Command.ChatMessage.Channel, $"@{user} you have entered!");
+                }
+            }
+            else if (loweredCommand == "confirm" && !string.IsNullOrEmpty(CurrentWinnerName))
+            {
+                if (user == CurrentWinnerName)
+                {
+                    CancelWait();
+                    SendMessageToAllChannels($"{CurrentRafflePrize} claimed by @{CurrentWinnerName}! Congrats! {settings.WinnerInstructions}");
+                    WriteRaffleResult(CurrentWinnerName);
+                    Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
+                }
+                else
+                {
+                    SendMessageToChannel(args.Command.ChatMessage.Channel, $"Sorry, @{user}, it is too late to claim the prize.");
                 }
             }
         }

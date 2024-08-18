@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -12,7 +13,7 @@ namespace MultiUserRaffleBot.Models
         private ConcurrentQueue<RaffleItem> RaffleQueue = new();
         private Dictionary<double, RaffleItem> RaffleData = new Dictionary<double, RaffleItem>();
         private CancellationTokenSource cancelToken = new();
-        private int RaffleLength = 0;
+        private bool CanRaffle = true;
 
         public override ConsoleSources GetSource() => ConsoleSources.Raffle;
 
@@ -21,18 +22,13 @@ namespace MultiUserRaffleBot.Models
             PrintMessage("Force drawing raffle now...");
             // Cancel any task delay waits
             cancelToken.Cancel();
-            cancelToken.Dispose();
-            cancelToken = new();
         }
 
-        public void SetRaffleTime(int seconds)
-        {
-            RaffleLength = seconds * 1000;
-        }
+        public void SetCanRaffle(bool state) => CanRaffle = state;
 
         public void BuildRaffleData(RaffleItem[] items)
         {
-            if (items.Length > 0)
+            if (items.Length < 0)
                 return;
 
             RaffleData.Clear();
@@ -58,7 +54,7 @@ namespace MultiUserRaffleBot.Models
             while (ShouldRun)
             {
                 // Check to see if we have any commands in the queue to run
-                if (!RaffleQueue.IsEmpty)
+                if (!RaffleQueue.IsEmpty && CanRaffle)
                 {
                     if (RaffleQueue.TryDequeue(out RaffleItem? currentItem))
                     {
@@ -67,11 +63,24 @@ namespace MultiUserRaffleBot.Models
                         Invoke(new SourceEvent(SourceEventType.StartRaffle)
                         {
                             Name = currentItem.Artist,
+                            RaffleLength = currentItem.RaffleTime,
                             Message = currentItem.Type
                         });
 
                         // Wait however long the raffle is supposed to go
-                        await Task.Delay(RaffleLength, cancelToken.Token);
+                        try
+                        {
+                            await Task.Delay(currentItem.RaffleTime * 1000, cancelToken.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            PrintMessage("Raffle wait cancelled.");
+                        }
+                        finally
+                        {
+                            cancelToken.Dispose();
+                            cancelToken = new();
+                        }
 
                         PrintMessage($"Ending raffle for {currentItem.Type} from {currentItem.Artist}");
                         // End the raffle
@@ -80,6 +89,7 @@ namespace MultiUserRaffleBot.Models
                             Name = currentItem.Artist,
                             Message = currentItem.Type
                         });
+                        SetCanRaffle(false);
                     }
                 }
                 await Task.Delay(1000);

@@ -35,6 +35,8 @@ namespace MultiUserRaffleBot.Models
         // https://github.com/Tiltify/api/issues/9 (it's 5, and I will come after you if you limit me)
         public int PollingInterval { get; set; } = 5;
 
+        public bool Debug { get; set; } = false;
+
         public override void AddRequiredFields(ref RequiredFieldContainer RequiredFieldObj)
         {
             RequiredFieldObj.AddRange([ClientID, ClientSecret, CampaignID]);
@@ -48,6 +50,7 @@ namespace MultiUserRaffleBot.Models
         public string BotUserName { get; set; } = string.Empty;
         public string OAuthToken { get; set; } = string.Empty;
         public bool RespondToRaffleEntry { get; set; } = false;
+        public string WinnerInstructions { get; set; } = string.Empty;
 
         public override void AddRequiredFields(ref RequiredFieldContainer RequiredFieldObj)
         {
@@ -80,15 +83,9 @@ namespace MultiUserRaffleBot.Models
         [JsonProperty(Required = Required.Always)]
         public RaffleItem[] RaffleData = [];
 
-        [JsonProperty]
-        public int RaffleLengthInSec = 600;
-
         /*** UI Settings ***/
         [JsonProperty]
         public int MaxMessageLifetime = 5;
-
-        [JsonProperty]
-        public int MaxInputHistory = 5;
 
         /*** Config Loading/Saving ***/
         public static ConfigData? LoadConfigData()

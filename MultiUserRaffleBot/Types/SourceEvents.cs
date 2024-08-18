@@ -7,7 +7,8 @@ namespace MultiUserRaffleBot.Types
         None,
         GoalEvent,
         StartRaffle,
-        EndRaffle
+        EndRaffle,
+        ReadyToRaffle
     }
 
     public class SourceEvent
@@ -16,6 +17,7 @@ namespace MultiUserRaffleBot.Types
         // Only show up in raffles
         public string Name = string.Empty;
         public string Message = string.Empty;
+        public int RaffleLength = 600;
 
         // Only shows up in GoalEvent reaches
         public double Amount = 0.0;
