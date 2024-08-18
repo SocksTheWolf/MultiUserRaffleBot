@@ -158,6 +158,7 @@ namespace MultiUserRaffleBot.Models
             if (Entries.Count <= 0)
             {
                 PrintMessage($"There are no entries for the prize {CurrentRafflePrize} moving forward...");
+                SendMessageToAllChannels($"Raffle for prize {CurrentRafflePrize} ended with no claims. Prize may appear again in the future");
                 WriteRaffleResult("NO_ENTRIES!");
                 Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
                 return;
