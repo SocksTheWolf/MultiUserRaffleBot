@@ -108,7 +108,7 @@ namespace MultiUserRaffleBot.Models
                             int increaseOfFactor = factorValue - CurrentFactorAmount;
                             for (int i = 1; i <= increaseOfFactor; ++i)
                             {
-                                double milestone = CurrentFactorAmount + (100.0 * i);
+                                double milestone = (CurrentFactorAmount + i) * 100.0;
                                 Invoke(new SourceEvent(SourceEventType.GoalEvent)
                                 {
                                     Amount = milestone,
