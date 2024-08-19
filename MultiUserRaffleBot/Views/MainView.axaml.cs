@@ -1,6 +1,5 @@
 ﻿using Avalonia.Controls;
 using MultiUserRaffleBot.Models;
-using MultiUserRaffleBot.ViewModels;
 
 namespace MultiUserRaffleBot.Views;
 

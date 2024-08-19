@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
@@ -10,9 +11,18 @@ namespace MultiUserRaffleBot;
 
 public partial class App : Application
 {
+    private MainWindow? mainWindow;
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    private void MyMainWindow_PropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (sender is MainWindow && e.NewValue is WindowState windowState && windowState == WindowState.Minimized)
+        {
+            HideApplication();
+        }
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -23,10 +33,12 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            mainWindow = new MainWindow
             {
                 DataContext = new MainViewModel()
             };
+            desktop.MainWindow = mainWindow;
+            mainWindow.PropertyChanged += MyMainWindow_PropertyChanged;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -37,5 +49,35 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    public void RestoreApplication()
+    {
+        if (mainWindow != null)
+        {
+            mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Show();
+        }
+    }
+
+    public void HideApplication()
+    {
+        if (mainWindow != null)
+        {
+            mainWindow.WindowState = WindowState.Minimized;
+            mainWindow.Hide();
+        }
+    }
+
+    public void ToggleState()
+    {
+        if (mainWindow?.WindowState == WindowState.Normal)
+        {
+            HideApplication();
+        }
+        else
+        {
+            RestoreApplication();
+        }
     }
 }

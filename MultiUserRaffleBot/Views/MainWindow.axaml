@@ -9,6 +9,7 @@
         MinWidth="790" MinHeight="460"
         x:Class="MultiUserRaffleBot.Views.MainWindow"
         Title="MultiUser Raffle Bot"
+        Icon="/Assets/logo.ico"
         CanResize="False">
         <views:MainView />
 </Window>

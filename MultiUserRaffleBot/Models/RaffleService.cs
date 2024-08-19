@@ -41,9 +41,14 @@ namespace MultiUserRaffleBot.Models
 
         public void DrawRaffleNow()
         {
-            PrintMessage("Force drawing raffle now...");
-            // Cancel any task delay waits
-            cancelToken.Cancel();
+            if (currentRaffleItem != null)
+            {
+                PrintMessage("Force drawing raffle now...");
+                // Cancel any task delay waits
+                cancelToken.Cancel();
+            }
+            else
+                PrintMessage("No raffle is currently running!");
         }        
 
         public void ReachMilestone(double milestone)

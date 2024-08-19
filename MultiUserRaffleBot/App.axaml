@@ -1,10 +1,30 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MultiUserRaffleBot.ViewModels"
              x:Class="MultiUserRaffleBot.App"
+             x:DataType="vm:ApplicationViewModel"
              RequestedThemeVariant="Dark">
 
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     </Application.Styles>
+
+  <Application.DataContext>
+    <vm:ApplicationViewModel />
+  </Application.DataContext>
+
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon Icon="/Assets/logo.ico" MacOSProperties.IsTemplateIcon="true" ToolTipText="MultiUser Raffle Bot" Command="{Binding ToggleApplication}">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Restore" Command="{Binding RestoreApplication}" />
+            <NativeMenuItem Header="Exit" Command="{Binding ExitCommand}" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+  
 </Application>

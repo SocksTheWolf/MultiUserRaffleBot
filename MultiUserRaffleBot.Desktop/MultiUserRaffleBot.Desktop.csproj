@@ -11,6 +11,7 @@
     <Copyright>SocksTheWolf</Copyright>
     <Authors>SocksTheWolf</Authors>
     <Product>MultiUserRaffleBot</Product>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,5 +27,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\\MultiUserRaffleBot\\MultiUserRaffleBot.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="logo.ico" />
   </ItemGroup>
 </Project>
