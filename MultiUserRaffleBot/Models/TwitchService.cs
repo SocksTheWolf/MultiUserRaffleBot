@@ -14,6 +14,14 @@ using TwitchLib.Communication.Models;
 
 namespace MultiUserRaffleBot.Models
 {
+    public enum RaffleState
+    {
+        Waiting,
+        RaffleOpen,
+        WinnerPicked,
+        NoEntries,
+        Claimed
+    }
     public class TwitchService : BaseService
     {
         private readonly TwitchClient client;
@@ -24,6 +32,7 @@ namespace MultiUserRaffleBot.Models
         // Raffle Data
         private const string WinnerLogFile = "raffle.txt";
         private bool RaffleOpen = false;
+        private string CurrentRaffleMessage = string.Empty;
         private string CurrentRafflePrize = string.Empty;
         private string CurrentWinnerName = string.Empty;
         private Collection<string> Entries = new();
@@ -126,6 +135,28 @@ namespace MultiUserRaffleBot.Models
         }
 
         /*** Raffle Support ***/
+        private void SetCurrentRaffleMessage(RaffleState state, int raffleLength = 600)
+        {
+            switch (state)
+            {
+                case RaffleState.RaffleOpen:
+                    CurrentRaffleMessage = $"Drawing is now open for {CurrentRafflePrize} for {raffleLength / 60} minutes! Type !enter to enter.";
+                    break;
+                case RaffleState.WinnerPicked:
+                    CurrentRaffleMessage = $"Winner of {CurrentRafflePrize} is @{CurrentWinnerName}! Type !confirm within 5 minutes to confirm!";
+                    break;
+                case RaffleState.Claimed:
+                    CurrentRaffleMessage = $"{CurrentRafflePrize} claimed by @{CurrentWinnerName}! Congrats! {settings.WinnerInstructions}";
+                    break;
+                case RaffleState.NoEntries:
+                    CurrentRaffleMessage = $"Drawing for prize {CurrentRafflePrize} ended with no claims. Prize may appear again in the future...";
+                    break;
+                default:
+                    CurrentRaffleMessage = "";
+                    break;
+            }
+        }
+
         public void StartRaffle(string rafflePrize, int raffleLength)
         {
             // If the raffle prize string is just empty, skip the command
@@ -135,7 +166,9 @@ namespace MultiUserRaffleBot.Models
             RaffleOpen = true;
             Entries.Clear();
             CurrentRafflePrize = rafflePrize;
-            SendMessageToAllChannels($"Drawing is now open for {CurrentRafflePrize} for {raffleLength/60} minutes! Type !enter to enter.");
+            SetCurrentRaffleMessage(RaffleState.RaffleOpen, raffleLength);
+
+            SendCurrentStatusToAllChannels();
             PrintMessage($"Raffle has now opened for {CurrentRafflePrize}!");
         }
 
@@ -158,7 +191,10 @@ namespace MultiUserRaffleBot.Models
             if (Entries.Count <= 0)
             {
                 PrintMessage($"There are no entries for the prize {CurrentRafflePrize} moving forward...");
-                SendMessageToAllChannels($"Drawing for prize {CurrentRafflePrize} ended with no claims. Prize may appear again in the future...");
+
+                SetCurrentRaffleMessage(RaffleState.NoEntries);
+                SendCurrentStatusToAllChannels();
+
                 WriteRaffleResult("NO_ENTRIES!");
                 Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
                 return;
@@ -175,7 +211,9 @@ namespace MultiUserRaffleBot.Models
             Entries.RemoveAt(ChooseIndex);
 
             // Open the confirm window for 5 minutes
-            SendMessageToAllChannels($"Winner of {CurrentRafflePrize} is @{CurrentWinnerName}! Type !confirm within 5 minutes to confirm!");
+            SetCurrentRaffleMessage(RaffleState.WinnerPicked);
+            SendCurrentStatusToAllChannels();
+
             Task.Run(async () =>
             {
                 // 300000 is 5 minutes in ms
@@ -206,10 +244,7 @@ namespace MultiUserRaffleBot.Models
         private void OnChannelJoined(object unused, OnJoinedChannelArgs args)
         {
             PrintMessage($"Joined channel: {args.Channel}");
-            if (RaffleOpen)
-            {
-                SendMessageToChannel(args.Channel, $"Drawing is now open for {CurrentRafflePrize}! Type !enter to enter.");
-            }
+            SendMessageToChannel(args.Channel, CurrentRaffleMessage);
         }
 
         private void OnChannelLeft(object unused, OnLeftChannelArgs args)
@@ -238,8 +273,12 @@ namespace MultiUserRaffleBot.Models
                 if (user == CurrentWinnerName)
                 {
                     CancelWait();
-                    SendMessageToAllChannels($"{CurrentRafflePrize} claimed by @{CurrentWinnerName}! Congrats! {settings.WinnerInstructions}");
+
+                    // Push updates to everyone
+                    SetCurrentRaffleMessage(RaffleState.Claimed);
                     WriteRaffleResult(CurrentWinnerName);
+                    SendCurrentStatusToAllChannels();
+
                     Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
                 }
                 else
@@ -252,6 +291,9 @@ namespace MultiUserRaffleBot.Models
         /*** Sending messages to a channel ***/
         public void SendMessageToChannel(string channel, string message)
         {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
             try
             {
                 client.SendMessage(channel, message);
@@ -264,6 +306,9 @@ namespace MultiUserRaffleBot.Models
 
         public void SendMessageToChannel(JoinedChannel channel, string message)
         {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
             try
             {
                 client.SendMessage(channel, message);
@@ -283,5 +328,7 @@ namespace MultiUserRaffleBot.Models
             foreach (JoinedChannel channel in AllJoinedChannels)
                 SendMessageToChannel(channel, message);
         }
+
+        private void SendCurrentStatusToAllChannels() => SendMessageToAllChannels(CurrentRaffleMessage);
     }
 }
