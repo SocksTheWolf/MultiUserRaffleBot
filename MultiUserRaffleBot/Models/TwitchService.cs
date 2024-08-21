@@ -135,7 +135,7 @@ namespace MultiUserRaffleBot.Models
             RaffleOpen = true;
             Entries.Clear();
             CurrentRafflePrize = rafflePrize;
-            SendMessageToAllChannels($"Raffle is now open for {CurrentRafflePrize} for {raffleLength/60} minutes! Type !enter to enter.");
+            SendMessageToAllChannels($"Drawing is now open for {CurrentRafflePrize} for {raffleLength/60} minutes! Type !enter to enter.");
             PrintMessage($"Raffle has now opened for {CurrentRafflePrize}!");
         }
 
@@ -158,7 +158,7 @@ namespace MultiUserRaffleBot.Models
             if (Entries.Count <= 0)
             {
                 PrintMessage($"There are no entries for the prize {CurrentRafflePrize} moving forward...");
-                SendMessageToAllChannels($"Raffle for prize {CurrentRafflePrize} ended with no claims. Prize may appear again in the future");
+                SendMessageToAllChannels($"Drawing for prize {CurrentRafflePrize} ended with no claims. Prize may appear again in the future...");
                 WriteRaffleResult("NO_ENTRIES!");
                 Invoke(new SourceEvent(SourceEventType.ReadyToRaffle));
                 return;
@@ -175,7 +175,7 @@ namespace MultiUserRaffleBot.Models
             Entries.RemoveAt(ChooseIndex);
 
             // Open the confirm window for 5 minutes
-            SendMessageToAllChannels($"Raffle winner of {CurrentRafflePrize} is @{CurrentWinnerName}! Type !confirm within 5 minutes to confirm!");
+            SendMessageToAllChannels($"Winner of {CurrentRafflePrize} is @{CurrentWinnerName}! Type !confirm within 5 minutes to confirm!");
             Task.Run(async () =>
             {
                 // 300000 is 5 minutes in ms
@@ -206,6 +206,10 @@ namespace MultiUserRaffleBot.Models
         private void OnChannelJoined(object unused, OnJoinedChannelArgs args)
         {
             PrintMessage($"Joined channel: {args.Channel}");
+            if (RaffleOpen)
+            {
+                SendMessageToChannel(args.Channel, $"Drawing is now open for {CurrentRafflePrize}! Type !enter to enter.");
+            }
         }
 
         private void OnChannelLeft(object unused, OnLeftChannelArgs args)

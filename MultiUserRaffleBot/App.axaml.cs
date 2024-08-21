@@ -17,7 +17,8 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    private void MyMainWindow_PropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    // Handle minimizing to tray upon hitting the minimize state.
+    private void MainWindow_PropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (sender is MainWindow && e.NewValue is WindowState windowState && windowState == WindowState.Minimized)
         {
@@ -38,7 +39,7 @@ public partial class App : Application
                 DataContext = new MainViewModel()
             };
             desktop.MainWindow = mainWindow;
-            mainWindow.PropertyChanged += MyMainWindow_PropertyChanged;
+            mainWindow.PropertyChanged += MainWindow_PropertyChanged;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -55,6 +56,9 @@ public partial class App : Application
     {
         if (mainWindow != null)
         {
+            if (mainWindow.WindowState == WindowState.Normal)
+                return;
+
             mainWindow.WindowState = WindowState.Normal;
             mainWindow.Show();
         }
