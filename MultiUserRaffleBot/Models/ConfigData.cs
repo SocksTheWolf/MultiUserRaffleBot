@@ -87,6 +87,9 @@ namespace MultiUserRaffleBot.Models
         [JsonProperty]
         public int MaxMessageLifetime = 5;
 
+        [JsonProperty]
+        public bool EnableLogging = false;
+
         /*** Config Loading/Saving ***/
         public static ConfigData? LoadConfigData()
         {

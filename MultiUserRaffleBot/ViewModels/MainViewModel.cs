@@ -102,7 +102,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         // Set the max message lifetime
-        Console.SetMaxMessageLifetime(Config.MaxMessageLifetime);
+        Console.ApplySettings(Config.MaxMessageLifetime, Config.EnableLogging);
         Raffle.BuildRaffleData(Config.RaffleData);
     }
 

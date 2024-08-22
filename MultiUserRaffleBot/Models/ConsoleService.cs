@@ -7,6 +7,7 @@ using MultiUserRaffleBot.Utils;
 using MultiUserRaffleBot.Types;
 using Avalonia.Controls;
 using System.Linq;
+using System.IO;
 
 namespace MultiUserRaffleBot.Models
 {
@@ -34,17 +35,22 @@ namespace MultiUserRaffleBot.Models
         public ObservableCollection<ConsoleMessage> ConsoleMessages { get; private set; }
         public static DataGrid? ConsoleHistory;
         private int MaxMessageLifetime = 5;
+        private static string LogFileName = "log.txt";
+        private bool LoggingEnabled = false;
 
         public ConsoleService()
         {
             ConsoleMessages = [];
+            if (File.Exists(LogFileName))
+                File.Delete(LogFileName);
         }
 
         public override ConsoleSources GetSource() => ConsoleSources.None;
 
-        public void SetMaxMessageLifetime(int value)
+        public void ApplySettings(int messageLifetime, bool enableLogs)
         {
-            MaxMessageLifetime = value;
+            MaxMessageLifetime = messageLifetime;
+            LoggingEnabled = enableLogs;
         }
 
         public void AddMessage(string inMessage, ConsoleSources source = ConsoleSources.None)
@@ -52,6 +58,8 @@ namespace MultiUserRaffleBot.Models
             // Don't bother adding messages that are blank
             if (string.IsNullOrWhiteSpace(inMessage))
                 return;
+
+            PrintToLog(inMessage, source);
 
             Dispatcher.UIThread.Post(() => {
                 ConsoleMessages.Add(new ConsoleMessage(inMessage, source));
@@ -67,6 +75,18 @@ namespace MultiUserRaffleBot.Models
         public void ClearAllMessages()
         {
             Dispatcher.UIThread.Post(() => ConsoleMessages.Clear());
+        }
+
+        private void PrintToLog(string inMessage, ConsoleSources source)
+        {
+            if (!LoggingEnabled)
+                return;
+
+            // Print out the winner to a log file.
+            using (StreamWriter FileWriter = File.AppendText(LogFileName))
+            {
+                FileWriter.WriteLine($"[{DateTime.Now}]({source}) {inMessage}");
+            }
         }
 
         protected override async Task Tick()
