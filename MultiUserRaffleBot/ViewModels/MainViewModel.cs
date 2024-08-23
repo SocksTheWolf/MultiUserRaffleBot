@@ -57,7 +57,12 @@ public partial class MainViewModel : ViewModelBase
         /* Raffle */
         Raffle.OnSourceEvent += (data) => {
             if (data.Type == SourceEventType.StartRaffle)
+            {
+                // Make sure that we are joined in all of the channels
+                Twitch.JoinChannels(Config.TwitchSettings);
+                // Then start the raffle.
                 Twitch.StartRaffle($"{data.Message} from {data.Name}", data.RaffleLength);
+            }
             else
                 Twitch.PickRaffle();
         };

@@ -1,5 +1,6 @@
 ﻿using MultiUserRaffleBot.Types;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -10,6 +11,7 @@ using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
+using TwitchLib.Communication.Events;
 using TwitchLib.Communication.Models;
 
 namespace MultiUserRaffleBot.Models
@@ -22,12 +24,29 @@ namespace MultiUserRaffleBot.Models
         NoEntries,
         Claimed
     }
-    public class TwitchService : BaseService
+
+    public struct MessageData
+    {
+        public string Channel;
+        public string Message;
+        public MessageData(string channel, string message)
+        {
+            Channel = channel;
+            Message = message;
+        }
+
+        public bool IsValid() => !string.IsNullOrWhiteSpace(Channel) && !string.IsNullOrWhiteSpace(Message);
+    }
+
+    public class TwitchService : BaseServiceTickable
     {
         private readonly TwitchClient client;
         private readonly TwitchSettings settings;
-        private Random rng = new Random(Guid.NewGuid().GetHashCode());
+        private Random rng;
         private CancellationTokenSource cancelToken = new();
+
+        // Message Queue
+        private ConcurrentQueue<MessageData> MessageQueue = new();
 
         // Raffle Data
         private bool RaffleOpen = false;
@@ -43,6 +62,8 @@ namespace MultiUserRaffleBot.Models
 
         public TwitchService(TwitchSettings InSettings)
         {
+            rng = new Random(Guid.NewGuid().GetHashCode());
+
             settings = InSettings;
             var clientOptions = new ClientOptions
             {
@@ -50,8 +71,7 @@ namespace MultiUserRaffleBot.Models
                 ThrottlingPeriod = TimeSpan.FromSeconds(30)
             };
 
-            WebSocketClient customClient = new(clientOptions);
-
+            TcpClient customClient = new TcpClient(clientOptions);
             client = new TwitchClient(customClient)
             {
                 AutoReListenOnException = true
@@ -61,11 +81,18 @@ namespace MultiUserRaffleBot.Models
             client.OnJoinedChannel += OnChannelJoined;
             client.OnLeftChannel += OnChannelLeft;
             client.OnChatCommandReceived += OnCommandReceived;
+            client.OnError += OnError;
+            client.OnLog += OnLog;
+            client.OnConnected += OnConnected;
+            client.OnConnectionError += OnConnectionError;
+            client.OnDisconnected += OnDisconnection;
 #pragma warning restore CS8622
         }
 
         protected override bool Internal_Start()
         {
+            base.Internal_Start();
+
             if (settings.Channels == null)
             {
                 PrintMessage("Twitch service is missing channels to connect to!!!");
@@ -193,8 +220,7 @@ namespace MultiUserRaffleBot.Models
             SetCurrentRaffleMessage(RaffleState.WinnerPicked);
             SendCurrentStatusToAllChannels();
 
-            Task.Run(async () =>
-            {
+            Task.Run(async () => {
                 // 300000 is 5 minutes in ms
                 await Task.Delay(300000, cancelToken.Token);
                 PrintMessage($"Raffle prize for {CurrentRafflePrize} was not claimed, redrawing...");
@@ -246,12 +272,43 @@ namespace MultiUserRaffleBot.Models
             CurrentRafflePrize = string.Empty;
             CurrentWinnerName = string.Empty;
             Entries.Clear();
+
+            // Reseed RNG
+            rng = new Random(Guid.NewGuid().GetHashCode());
+        }
+
+        /*** Handle Logging Events ***/
+        private void OnLog(object unused, OnLogArgs args)
+        {
+            PrintMessage($"{args.Data}");
+        }
+
+        private void OnError(object unused, OnErrorEventArgs args)
+        {
+            PrintMessage($"ERROR {args.Exception.Message}");
+        }
+
+        /*** Handling Connection Events ***/
+        private void OnConnected(object unused, OnConnectedArgs args)
+        {
+            PrintMessage("Bot Connected");
+        }
+
+        private void OnConnectionError(object unused, OnConnectionErrorArgs args)
+        {
+            PrintMessage($"CONN ERROR {args.Error.Message}");
+        }
+
+        private void OnDisconnection(object unused, OnDisconnectedEventArgs args)
+        {
+            PrintMessage($"Bot Disconnected!!!");
         }
 
         /*** Handle Twitch Events ***/
         private void OnChannelJoined(object unused, OnJoinedChannelArgs args)
         {
             PrintMessage($"Joined channel: {args.Channel}");
+            // Send any status messages to the channel if it was force reconnected.
             SendMessageToChannel(args.Channel, CurrentRaffleMessage);
         }
 
@@ -272,7 +329,7 @@ namespace MultiUserRaffleBot.Models
                 if (RaffleOpen && !Entries.Contains(user))
                 {
                     Entries.Add(user);
-                    PrintMessage($"{user} entered at index {Entries.Count}");
+                    PrintMessage($"{user} entered at index {Entries.Count-1}");
                     if (settings.RespondToRaffleEntry)
                         SendMessageToChannel(args.Command.ChatMessage.Channel, $"@{user} you have entered!");
                 }
@@ -304,29 +361,17 @@ namespace MultiUserRaffleBot.Models
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            try
-            {
-                client.SendMessage(channel, message);
-            }
-            catch (Exception ex)
-            {
-                PrintMessage($"Encountered exception upon sending message to channel[{channel}]: {ex}");
-            }
+            MessageQueue.Enqueue(new MessageData(channel, message));
         }
 
         public void SendMessageToChannel(JoinedChannel channel, string message)
         {
-            if (string.IsNullOrWhiteSpace(message))
-                return;
+            SendMessageToChannel(channel.Channel, message);
+        }
 
-            try
-            {
-                client.SendMessage(channel, message);
-            }
-            catch (Exception ex)
-            {
-                PrintMessage($"Encountered exception upon sending message to channel[{channel.Channel}]: {ex}");
-            }
+        private void SendMessageToChannel(MessageData msg)
+        {
+            MessageQueue.Enqueue(msg);
         }
 
         public void SendMessageToAllChannels(string message)
@@ -340,5 +385,36 @@ namespace MultiUserRaffleBot.Models
         }
 
         private void SendCurrentStatusToAllChannels() => SendMessageToAllChannels(CurrentRaffleMessage);
+
+        /*** Handling sending messages internally ***/
+        protected override async Task Tick()
+        {
+            while (ShouldRun)
+            {
+                await Task.Delay(1500);
+
+                if (!client.IsConnected) 
+                    continue;
+
+                if (!MessageQueue.IsEmpty)
+                {
+                    if (MessageQueue.TryDequeue(out MessageData msg))
+                    {
+                        // If message is not valid, just drop the message.
+                        if (!msg.IsValid())
+                            continue;
+
+                        try
+                        {
+                            client.SendMessage(msg.Channel, msg.Message);
+                        }
+                        catch (Exception ex)
+                        {
+                            PrintMessage($"Encountered exception upon sending message to channel[{msg.Channel}]: {ex}");
+                        }
+                    }
+                }
+            }
+        }
     }
 }
