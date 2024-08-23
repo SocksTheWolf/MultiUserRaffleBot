@@ -50,6 +50,7 @@ namespace MultiUserRaffleBot.Models
         public string BotUserName { get; set; } = string.Empty;
         public string OAuthToken { get; set; } = string.Empty;
         public bool RespondToRaffleEntry { get; set; } = false;
+        public bool ShouldLog = false;
         public string WinnerInstructions { get; set; } = string.Empty;
 
         public override void AddRequiredFields(ref RequiredFieldContainer RequiredFieldObj)

@@ -82,7 +82,8 @@ namespace MultiUserRaffleBot.Models
             client.OnLeftChannel += OnChannelLeft;
             client.OnChatCommandReceived += OnCommandReceived;
             client.OnError += OnError;
-            client.OnLog += OnLog;
+            if (settings.ShouldLog)
+                client.OnLog += OnLog;
             client.OnConnected += OnConnected;
             client.OnConnectionError += OnConnectionError;
             client.OnDisconnected += OnDisconnection;
